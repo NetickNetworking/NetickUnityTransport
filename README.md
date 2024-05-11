@@ -5,7 +5,7 @@
 Unity Editor version 2021 or later.
 
 Install Netick 2 before installing this package.
-https://github.com/karrarrahim/NetickForUnity
+https://github.com/NetickNetworking/NetickForUnity
 
 ### Steps
 
