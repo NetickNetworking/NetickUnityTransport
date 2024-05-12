@@ -112,7 +112,7 @@ public unsafe class NetickUnityTransport : NetworkTransport
 
   public override void Connect(string address, int port, byte[] connectionData, int connectionDataLength)
   {
-    var endpoint        = NetworkEndpoint.LoopbackIpv4.WithPort((ushort)port);
+      var endpoint      = NetworkEndpoint.Parse(address, (ushort)port); 
     if (connectionData != null)
     {
       _connectionRequestNative.CopyFrom(connectionData);
