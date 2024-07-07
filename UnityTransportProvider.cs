@@ -35,6 +35,12 @@ namespace StinkySteak.NShooter.Netick.Transport
         [SerializeField] private ClientNetworkProtocol _clientProtocol;
         [SerializeField] private ServerNetworkProtocol _serverProtocol;
 
+        public void SetProtocol(ClientNetworkProtocol clientProtocol, ServerNetworkProtocol serverProtocol)
+        {
+            _clientProtocol = clientProtocol;
+            _serverProtocol = serverProtocol;
+        }
+
         public override NetworkTransport MakeTransportInstance()
         {
             NetickUnityTransport transport = new();
