@@ -15,6 +15,11 @@ namespace StinkySteak.NShooter.Netick.Transport
         None = 0,
         UDP = 1,
         WS = 2,
+
+        /// <summary>
+        /// Will determine protocol based on the platform selected
+        /// </summary>
+        Auto = 3,
     }
     public enum ServerNetworkProtocol
     {
@@ -30,17 +35,24 @@ namespace StinkySteak.NShooter.Netick.Transport
         [SerializeField] private ClientNetworkProtocol _clientProtocol;
         [SerializeField] private ServerNetworkProtocol _serverProtocol;
 
-        public void SetClientProtocol(ClientNetworkProtocol protocol)
-        {
-            _clientProtocol = protocol;
-        }
-
         public override NetworkTransport MakeTransportInstance()
         {
             NetickUnityTransport transport = new();
-            transport.SetProtocol(_clientProtocol, _serverProtocol);
+            transport.SetProtocol(GetClientNetworkProtocol(), _serverProtocol);
 
             return transport;
+        }
+
+        private ClientNetworkProtocol GetClientNetworkProtocol()
+        {
+            if (_clientProtocol != ClientNetworkProtocol.Auto)
+                return _clientProtocol;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return ClientNetworkProtocol.WS;
+#else
+            return ClientNetworkProtocol.UDP;
+#endif
         }
     }
     public static class NetickUnityTransportExt { public static NetickUnityTransportEndPoint ToNetickEndPoint(this NetworkEndpoint networkEndpoint) => new NetickUnityTransportEndPoint(networkEndpoint); }
