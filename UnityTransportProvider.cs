@@ -49,7 +49,7 @@ namespace StinkySteak.NShooter.Netick.Transport
                 return _clientProtocol;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-            return ClientNetworkProtocol.WS;
+            return ClientNetworkProtocol.WebSocket;
 #else
             return ClientNetworkProtocol.UDP;
 #endif
