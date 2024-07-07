@@ -14,7 +14,7 @@ namespace StinkySteak.NShooter.Netick.Transport
     {
         None = 0,
         UDP = 1,
-        WS = 2,
+        WebSocket = 2,
 
         /// <summary>
         /// Will determine protocol based on the platform selected
@@ -25,7 +25,7 @@ namespace StinkySteak.NShooter.Netick.Transport
     {
         None = 0,
         UDP = 1,
-        WS = 2,
+        WebSocket = 2,
         All = 3,
     }
 
@@ -172,7 +172,7 @@ namespace StinkySteak.NShooter.Netick.Transport
                 if (ServerProtocol == ServerNetworkProtocol.UDP)
                     BindAndListenDriverTo(in udpDriver, port);
 
-                if (ServerProtocol == ServerNetworkProtocol.WS)
+                if (ServerProtocol == ServerNetworkProtocol.WebSocket)
                     BindAndListenDriverTo(in wsDriver, port);
             }
 
