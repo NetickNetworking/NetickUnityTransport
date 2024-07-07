@@ -128,12 +128,26 @@ namespace StinkySteak.NShooter.Netick.Transport
             _connections = new NativeList<Unity.Networking.Transport.NetworkConnection>(Engine.IsServer ? Engine.Config.MaxPlayers : 0, Unity.Collections.Allocator.Persistent);
         }
 
+        private NetworkDriver ConstructDriverUDP()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return NetworkDriver.Create(new IPCNetworkInterface());
+#else
+            return NetworkDriver.Create(new UDPNetworkInterface());
+#endif
+        }
+
+        private NetworkDriver ConstructDriverWS()
+        {
+            return NetworkDriver.Create(new WebSocketNetworkInterface());
+        }
+
         public override void Run(RunMode mode, int port)
         {
-            var udpDriver = NetworkDriver.Create(new UDPNetworkInterface());
-            var wsDriver = NetworkDriver.Create(new WebSocketNetworkInterface());
+            NetworkDriver udpDriver = ConstructDriverUDP();
+            NetworkDriver wsDriver = ConstructDriverWS();
 
-            var multiDriver = MultiNetworkDriver.Create();
+            MultiNetworkDriver multiDriver = MultiNetworkDriver.Create();
 
             if (Engine.IsServer)
             {
