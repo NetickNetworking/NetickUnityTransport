@@ -354,6 +354,11 @@ namespace StinkySteak.NShooter.Netick.Transport
                         _freeConnections.Enqueue(netickConn);
                         _connectedPeers.Remove(conn);
                     }
+                    else
+                    {
+                        if (Engine.IsClient)
+                            NetworkPeer.OnConnectFailed(ConnectionFailedReason.Refused);
+                    }
 
                     if (Engine.IsClient)
                         _serverConnection = default;
