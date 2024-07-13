@@ -34,6 +34,15 @@ namespace StinkySteak.NShooter.Netick.Transport
     {
         [SerializeField] private ClientNetworkProtocol _clientProtocol;
         [SerializeField] private ServerNetworkProtocol _serverProtocol;
+        [SerializeField] private NetworkConfigParameter _parameters;
+
+        private void Reset()
+        {
+            NetworkSettings settings = new NetworkSettings();
+            NetworkConfigParameter param = settings.GetNetworkConfigParameters();
+
+            _parameters = param;
+        }
 
         public void SetProtocol(ClientNetworkProtocol clientProtocol, ServerNetworkProtocol serverProtocol)
         {
@@ -45,6 +54,7 @@ namespace StinkySteak.NShooter.Netick.Transport
         {
             NetickUnityTransport transport = new();
             transport.SetProtocol(GetClientNetworkProtocol(), _serverProtocol);
+            transport.SetNetworkConfigParameter(_parameters);
 
             return transport;
         }
@@ -67,6 +77,12 @@ namespace StinkySteak.NShooter.Netick.Transport
     {
         public ClientNetworkProtocol ClientProtocol;
         public ServerNetworkProtocol ServerProtocol;
+        public NetworkConfigParameter Parameters;
+
+        public void SetNetworkConfigParameter(NetworkConfigParameter parameters)
+        {
+            Parameters = parameters;
+        }
 
         public void SetProtocol(ClientNetworkProtocol clientProtocol, ServerNetworkProtocol serverProtocol)
         {
@@ -151,13 +167,23 @@ namespace StinkySteak.NShooter.Netick.Transport
 #if UNITY_WEBGL && !UNITY_EDITOR
             return NetworkDriver.Create(new IPCNetworkInterface());
 #else
-            return NetworkDriver.Create(new UDPNetworkInterface());
+            
+            return NetworkDriver.Create(new UDPNetworkInterface(), GetNetworkSettings());
 #endif
+        }
+
+        private NetworkSettings GetNetworkSettings()
+        {
+            NetworkSettings settings = new NetworkSettings();
+
+            settings.AddRawParameterStruct(ref Parameters);
+
+            return settings;
         }
 
         private NetworkDriver ConstructDriverWS()
         {
-            return NetworkDriver.Create(new WebSocketNetworkInterface());
+            return NetworkDriver.Create(new WebSocketNetworkInterface(), GetNetworkSettings());
         }
 
         public override void Run(RunMode mode, int port)
