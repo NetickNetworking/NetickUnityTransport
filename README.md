@@ -23,3 +23,15 @@ https://github.com/NetickNetworking/NetickForUnity
 - Run multiple protocols in a single machine
   - WebSocket & UDP
   - Allowing players from WebGL and Native device to connect to the server.
+
+If there were multiple protocols running, the selected port would be:
+```
+startPort = 7777;
+protocolPort = 7777 + n;
+
+E.g
+
+UDP Starts on 7777
+WS Starts on 7778
+
+```
