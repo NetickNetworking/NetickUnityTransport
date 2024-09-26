@@ -217,17 +217,17 @@ namespace StinkySteak.NShooter.Netick.Transport
                 _freeConnections.Enqueue(new NetickUnityTransportConnection(this));
         }
 
-        private void BindAndListenDriverTo(in NetworkDriver udpDriver, int port)
+        private void BindAndListenDriverTo(in NetworkDriver driver, int port)
         {
-            NetworkEndpoint endpointUdp = NetworkEndpoint.AnyIpv4.WithPort((ushort)port);
+            NetworkEndpoint endpoint = NetworkEndpoint.AnyIpv4.WithPort((ushort)port);
 
-            if (udpDriver.Bind(endpointUdp) != 0)
+            if (driver.Bind(endpoint) != 0)
             {
                 Debug.LogError($"Failed to bind to port {port}");
                 return;
             }
 
-            udpDriver.Listen();
+            driver.Listen();
         }
         public override void Shutdown()
         {
