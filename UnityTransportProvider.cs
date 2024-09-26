@@ -36,7 +36,17 @@ namespace StinkySteak.NShooter.Netick.Transport
         [SerializeField] private ClientNetworkProtocol _clientProtocol;
         [SerializeField] private ServerNetworkProtocol _serverProtocol;
         [SerializeField] private NetworkConfigParameter _parameters;
+
+        [Header("Websocket Secure")]
         [SerializeField] private bool _webSocketUseEncryption;
+
+        [Space]
+        [SerializeField] private string _serverCertificate;
+        [SerializeField] private string _serverPrivateKey;
+
+        [Space]
+        [SerializeField] private string _serverCommonName;
+        [SerializeField] private string _clientCaCertificate;
 
         private void Reset()
         {
@@ -52,12 +62,26 @@ namespace StinkySteak.NShooter.Netick.Transport
             _serverProtocol = serverProtocol;
         }
 
+        public void SetServerSecrets(string serverCertificate, string serverPrivateKey)
+        {
+            _serverCertificate = serverCertificate;
+            _serverPrivateKey = serverPrivateKey;
+        }
+
+        public void SetClientSecrets(string serverCommonName, string caCertificate = null)
+        {
+            _serverCommonName = serverCommonName;
+            _clientCaCertificate = caCertificate;
+        }
+
         public override NetworkTransport MakeTransportInstance()
         {
             NetickUnityTransport transport = new();
             transport.SetProtocol(GetClientNetworkProtocol(), _serverProtocol);
             transport.SetNetworkConfigParameter(_parameters);
             transport.SetWebSocketEncryption(_webSocketUseEncryption);
+            transport.SetServerSecrets(_serverCertificate, _serverPrivateKey);
+            transport.SetClientSecrets(_serverCommonName, _clientCaCertificate);
 
             return transport;
         }
@@ -81,7 +105,14 @@ namespace StinkySteak.NShooter.Netick.Transport
         public ClientNetworkProtocol ClientProtocol;
         public ServerNetworkProtocol ServerProtocol;
         public NetworkConfigParameter Parameters;
+
         public bool WebSocketUseEncryption;
+
+        public string ServerCertificate;
+        public string ServerPrivateKey;
+
+        public string ServerCommonName;
+        public string ClientCaCertificate;
 
 
         public void SetNetworkConfigParameter(NetworkConfigParameter parameters)
@@ -92,6 +123,18 @@ namespace StinkySteak.NShooter.Netick.Transport
         public void SetWebSocketEncryption(bool webSocketUseEncryption)
         {
             WebSocketUseEncryption = webSocketUseEncryption;
+        }
+
+        public void SetServerSecrets(string serverCertificate, string serverPrivateKey)
+        {
+            ServerCertificate = serverCertificate;
+            ServerPrivateKey = serverPrivateKey;
+        }
+
+        public void SetClientSecrets(string serverCommonName, string caCertificate = null)
+        {
+            ServerCommonName = serverCommonName;
+            ClientCaCertificate = caCertificate;
         }
 
         public void SetProtocol(ClientNetworkProtocol clientProtocol, ServerNetworkProtocol serverProtocol)
@@ -199,32 +242,26 @@ namespace StinkySteak.NShooter.Netick.Transport
 
             if (isServer)
             {
-                string serverCertificate = string.Empty;
-                string serverPrivateKey = string.Empty;
-
-                if (string.IsNullOrEmpty(serverCertificate) || string.IsNullOrEmpty(serverPrivateKey))
+                if (string.IsNullOrEmpty(ServerCertificate) || string.IsNullOrEmpty(ServerPrivateKey))
                 {
                     throw new Exception("In order to use encrypted communications, when hosting, you must set the server certificate and key.");
                 }
 
-                settings.WithSecureServerParameters(serverCertificate, serverPrivateKey);
+                settings.WithSecureServerParameters(ServerCertificate, ServerPrivateKey);
             }
             else
             {
-                string serverCommonName = string.Empty;
-                string clientCaCertificate = string.Empty;
-
-                if (string.IsNullOrEmpty(serverCommonName))
+                if (string.IsNullOrEmpty(ServerCommonName))
                 {
                     throw new Exception("In order to use encrypted communications, clients must set the server common name.");
                 }
-                else if (string.IsNullOrEmpty(clientCaCertificate))
+                else if (string.IsNullOrEmpty(ClientCaCertificate))
                 {
-                    settings.WithSecureClientParameters(serverCommonName);
+                    settings.WithSecureClientParameters(ServerCommonName);
                 }
                 else
                 {
-                    settings.WithSecureClientParameters(clientCaCertificate, serverCommonName);
+                    settings.WithSecureClientParameters(ClientCaCertificate, ServerCommonName);
                 }
             }
 
