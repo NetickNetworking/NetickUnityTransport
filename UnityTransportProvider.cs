@@ -7,6 +7,7 @@ using Unity.Collections;
 using Netick;
 using Netick.Unity;
 using static StinkySteak.NShooter.Netick.Transport.NetickUnityTransport;
+using Unity.Networking.Transport.TLS;
 
 namespace StinkySteak.NShooter.Netick.Transport
 {
@@ -35,6 +36,7 @@ namespace StinkySteak.NShooter.Netick.Transport
         [SerializeField] private ClientNetworkProtocol _clientProtocol;
         [SerializeField] private ServerNetworkProtocol _serverProtocol;
         [SerializeField] private NetworkConfigParameter _parameters;
+        [SerializeField] private bool _webSocketUseEncryption;
 
         private void Reset()
         {
@@ -55,6 +57,7 @@ namespace StinkySteak.NShooter.Netick.Transport
             NetickUnityTransport transport = new();
             transport.SetProtocol(GetClientNetworkProtocol(), _serverProtocol);
             transport.SetNetworkConfigParameter(_parameters);
+            transport.SetWebSocketEncryption(_webSocketUseEncryption);
 
             return transport;
         }
@@ -78,10 +81,17 @@ namespace StinkySteak.NShooter.Netick.Transport
         public ClientNetworkProtocol ClientProtocol;
         public ServerNetworkProtocol ServerProtocol;
         public NetworkConfigParameter Parameters;
+        public bool WebSocketUseEncryption;
+
 
         public void SetNetworkConfigParameter(NetworkConfigParameter parameters)
         {
             Parameters = parameters;
+        }
+
+        public void SetWebSocketEncryption(bool webSocketUseEncryption)
+        {
+            WebSocketUseEncryption = webSocketUseEncryption;
         }
 
         public void SetProtocol(ClientNetworkProtocol clientProtocol, ServerNetworkProtocol serverProtocol)
@@ -167,7 +177,7 @@ namespace StinkySteak.NShooter.Netick.Transport
 #if UNITY_WEBGL && !UNITY_EDITOR
             return NetworkDriver.Create(new IPCNetworkInterface());
 #else
-            
+
             return NetworkDriver.Create(new UDPNetworkInterface(), GetNetworkSettings());
 #endif
         }
@@ -181,15 +191,68 @@ namespace StinkySteak.NShooter.Netick.Transport
             return settings;
         }
 
-        private NetworkDriver ConstructDriverWS()
+        private NetworkSettings GetWebSocketSecureSettings(bool isServer)
         {
-            return NetworkDriver.Create(new WebSocketNetworkInterface(), GetNetworkSettings());
+            NetworkSettings settings = new NetworkSettings();
+
+            settings.AddRawParameterStruct(ref Parameters);
+
+            if (isServer)
+            {
+                string serverCertificate = string.Empty;
+                string serverPrivateKey = string.Empty;
+
+                if (string.IsNullOrEmpty(serverCertificate) || string.IsNullOrEmpty(serverPrivateKey))
+                {
+                    throw new Exception("In order to use encrypted communications, when hosting, you must set the server certificate and key.");
+                }
+
+                settings.WithSecureServerParameters(serverCertificate, serverPrivateKey);
+            }
+            else
+            {
+                string serverCommonName = string.Empty;
+                string clientCaCertificate = string.Empty;
+
+                if (string.IsNullOrEmpty(serverCommonName))
+                {
+                    throw new Exception("In order to use encrypted communications, clients must set the server common name.");
+                }
+                else if (string.IsNullOrEmpty(clientCaCertificate))
+                {
+                    settings.WithSecureClientParameters(serverCommonName);
+                }
+                else
+                {
+                    settings.WithSecureClientParameters(clientCaCertificate, serverCommonName);
+                }
+            }
+
+            return settings;
+        }
+
+        private NetworkDriver ConstructDriverWS(bool isServer)
+        {
+            NetworkSettings networkSettings;
+
+            if (!WebSocketUseEncryption)
+            {
+                networkSettings = GetNetworkSettings();
+            }
+            else
+            {
+                networkSettings = GetWebSocketSecureSettings(isServer);
+            }
+
+            return NetworkDriver.Create(new WebSocketNetworkInterface(), networkSettings);
         }
 
         public override void Run(RunMode mode, int port)
         {
+            bool isServer = mode == RunMode.Server;
+
             NetworkDriver udpDriver = ConstructDriverUDP();
-            NetworkDriver wsDriver = ConstructDriverWS();
+            NetworkDriver wsDriver = ConstructDriverWS(isServer);
 
             MultiNetworkDriver multiDriver = MultiNetworkDriver.Create();
 
