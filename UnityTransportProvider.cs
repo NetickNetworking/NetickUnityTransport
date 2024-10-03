@@ -41,12 +41,12 @@ namespace StinkySteak.NShooter.Netick.Transport
         [SerializeField] private bool _webSocketUseEncryption;
 
         [Space]
-        [SerializeField] private string _serverCertificate;
-        [SerializeField] private string _serverPrivateKey;
+        [SerializeField][TextArea(3, 10)] private string _serverCertificate;
+        [SerializeField][TextArea(3, 10)] private string _serverPrivateKey;
 
         [Space]
-        [SerializeField] private string _serverCommonName;
-        [SerializeField] private string _clientCaCertificate;
+        [SerializeField][TextArea(3, 10)] private string _serverCommonName;
+        [SerializeField][TextArea(3, 10)] private string _clientCaCertificate;
 
         private void Reset()
         {
