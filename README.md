@@ -44,50 +44,50 @@ Unity Transport is compatible with Unity Relay. You have to clone this repo and 
 ```cs
 private NetworkDriver ConstructDriverRelay()
 {
-			RelayServerData relayData;
-			if (Engine.IsServer)
-			{
-				relayData = new RelayServerData(allocation, "udp");
-			}
-			else
-			{
-				relayData = new RelayServerData(joinAllocation, "udp");
-			}
- 
-			var settings = GetNetworkSettings();
-			settings.WithRelayParameters(ref relayData);
- 
-			// Create the Host's NetworkDriver from the NetworkSettings.
-			var hostDriver = NetworkDriver.Create(settings);
-			// Bind to the Relay server.
-			return hostDriver;
+    RelayServerData relayData;
+    if (Engine.IsServer)
+    {
+        relayData = new RelayServerData(allocation, "udp");
+    }
+    else
+    {
+        relayData = new RelayServerData(joinAllocation, "udp");
+    }
+
+    var settings = GetNetworkSettings();
+    settings.WithRelayParameters(ref relayData);
+
+    // Create the Host's NetworkDriver from the NetworkSettings.
+    var hostDriver = NetworkDriver.Create(settings);
+    // Bind to the Relay server.
+    return hostDriver;
 }
 ```
 4. Register the driver in `Run` method
 ```cs
 public override void Run(RunMode mode, int port)
+{
+	// ....
+	NetworkDriver relayDriver = ConstructDriverRelay();
+	MultiNetworkDriver multiDriver = MultiNetworkDriver.Create();
+ 
+	if (Engine.IsServer)
+	{
+		if (ServerProtocol == ServerNetworkProtocol.All)
 		{
-			// ....
-			NetworkDriver relayDriver = ConstructDriverRelay();
-			MultiNetworkDriver multiDriver = MultiNetworkDriver.Create();
- 
-			if (Engine.IsServer)
-			{
-				if (ServerProtocol == ServerNetworkProtocol.All)
-				{
-					// ...
-					BindAndListenDriverTo(in relayDriver, port + 2);
-				}
-
-        // ...
- 
-				if (ServerProtocol == ServerNetworkProtocol.Relay)
-					BindAndListenDriverTo(in relayDriver, port);
-			}
- 
 			// ...
-			multiDriver.AddDriver(relayDriver);
+			BindAndListenDriverTo(in relayDriver, port + 2);
 		}
+
+		// ...
+ 
+		if (ServerProtocol == ServerNetworkProtocol.Relay)
+			BindAndListenDriverTo(in relayDriver, port);
+	}
+ 
+	// ...
+	multiDriver.AddDriver(relayDriver);
+}
 ```
 5. Before Launching netick, make sure to use `CreateAllocation` and `GetJoinCode` for Host and supply to the `Allocation` variable. While client needs to call `JoinAllocationAsync` and supply it to the public variable.
 
