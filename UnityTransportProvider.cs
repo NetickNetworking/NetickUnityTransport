@@ -7,6 +7,7 @@ using Unity.Collections;
 using Netick;
 using Netick.Unity;
 using static StinkySteak.NShooter.Netick.Transport.NetickUnityTransport;
+using Unity.Networking.Transport.TLS;
 
 namespace StinkySteak.NShooter.Netick.Transport
 {
@@ -36,6 +37,17 @@ namespace StinkySteak.NShooter.Netick.Transport
         [SerializeField] private ServerNetworkProtocol _serverProtocol;
         [SerializeField] private NetworkConfigParameter _parameters;
 
+        [Header("Websocket Secure")]
+        [SerializeField] private bool _webSocketUseEncryption;
+
+        [Space]
+        [SerializeField][TextArea(3, 10)] private string _serverCertificate;
+        [SerializeField][TextArea(3, 10)] private string _serverPrivateKey;
+
+        [Space]
+        [SerializeField][TextArea(3, 10)] private string _serverCommonName;
+        [SerializeField][TextArea(3, 10)] private string _clientCaCertificate;
+
         private void Reset()
         {
             NetworkSettings settings = new NetworkSettings();
@@ -50,11 +62,26 @@ namespace StinkySteak.NShooter.Netick.Transport
             _serverProtocol = serverProtocol;
         }
 
+        public void SetServerSecrets(string serverCertificate, string serverPrivateKey)
+        {
+            _serverCertificate = serverCertificate;
+            _serverPrivateKey = serverPrivateKey;
+        }
+
+        public void SetClientSecrets(string serverCommonName, string caCertificate = null)
+        {
+            _serverCommonName = serverCommonName;
+            _clientCaCertificate = caCertificate;
+        }
+
         public override NetworkTransport MakeTransportInstance()
         {
             NetickUnityTransport transport = new();
             transport.SetProtocol(GetClientNetworkProtocol(), _serverProtocol);
             transport.SetNetworkConfigParameter(_parameters);
+            transport.SetWebSocketEncryption(_webSocketUseEncryption);
+            transport.SetServerSecrets(_serverCertificate, _serverPrivateKey);
+            transport.SetClientSecrets(_serverCommonName, _clientCaCertificate);
 
             return transport;
         }
@@ -79,9 +106,35 @@ namespace StinkySteak.NShooter.Netick.Transport
         public ServerNetworkProtocol ServerProtocol;
         public NetworkConfigParameter Parameters;
 
+        public bool WebSocketUseEncryption;
+
+        public string ServerCertificate;
+        public string ServerPrivateKey;
+
+        public string ServerCommonName;
+        public string ClientCaCertificate;
+
+
         public void SetNetworkConfigParameter(NetworkConfigParameter parameters)
         {
             Parameters = parameters;
+        }
+
+        public void SetWebSocketEncryption(bool webSocketUseEncryption)
+        {
+            WebSocketUseEncryption = webSocketUseEncryption;
+        }
+
+        public void SetServerSecrets(string serverCertificate, string serverPrivateKey)
+        {
+            ServerCertificate = serverCertificate;
+            ServerPrivateKey = serverPrivateKey;
+        }
+
+        public void SetClientSecrets(string serverCommonName, string caCertificate = null)
+        {
+            ServerCommonName = serverCommonName;
+            ClientCaCertificate = caCertificate;
         }
 
         public void SetProtocol(ClientNetworkProtocol clientProtocol, ServerNetworkProtocol serverProtocol)
@@ -167,7 +220,7 @@ namespace StinkySteak.NShooter.Netick.Transport
 #if UNITY_WEBGL && !UNITY_EDITOR
             return NetworkDriver.Create(new IPCNetworkInterface());
 #else
-            
+
             return NetworkDriver.Create(new UDPNetworkInterface(), GetNetworkSettings());
 #endif
         }
@@ -181,15 +234,62 @@ namespace StinkySteak.NShooter.Netick.Transport
             return settings;
         }
 
-        private NetworkDriver ConstructDriverWS()
+        private NetworkSettings GetWebSocketSecureSettings(bool isServer)
         {
-            return NetworkDriver.Create(new WebSocketNetworkInterface(), GetNetworkSettings());
+            NetworkSettings settings = new NetworkSettings();
+
+            settings.AddRawParameterStruct(ref Parameters);
+
+            if (isServer)
+            {
+                if (string.IsNullOrEmpty(ServerCertificate) || string.IsNullOrEmpty(ServerPrivateKey))
+                {
+                    throw new Exception("In order to use encrypted communications, when hosting, you must set the server certificate and key.");
+                }
+
+                settings.WithSecureServerParameters(ServerCertificate, ServerPrivateKey);
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(ServerCommonName))
+                {
+                    throw new Exception("In order to use encrypted communications, clients must set the server common name.");
+                }
+                else if (string.IsNullOrEmpty(ClientCaCertificate))
+                {
+                    settings.WithSecureClientParameters(ServerCommonName);
+                }
+                else
+                {
+                    settings.WithSecureClientParameters(ClientCaCertificate, ServerCommonName);
+                }
+            }
+
+            return settings;
+        }
+
+        private NetworkDriver ConstructDriverWS(bool isServer)
+        {
+            NetworkSettings networkSettings;
+
+            if (!WebSocketUseEncryption)
+            {
+                networkSettings = GetNetworkSettings();
+            }
+            else
+            {
+                networkSettings = GetWebSocketSecureSettings(isServer);
+            }
+
+            return NetworkDriver.Create(new WebSocketNetworkInterface(), networkSettings);
         }
 
         public override void Run(RunMode mode, int port)
         {
+            bool isServer = mode == RunMode.Server;
+
             NetworkDriver udpDriver = ConstructDriverUDP();
-            NetworkDriver wsDriver = ConstructDriverWS();
+            NetworkDriver wsDriver = ConstructDriverWS(isServer);
 
             MultiNetworkDriver multiDriver = MultiNetworkDriver.Create();
 
