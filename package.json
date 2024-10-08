@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "displayName": "UnityTransport for Netick",
   "description": "A transport wrapper for UnityTransport.",
-  "unity": "2021.3",
+  "unity": "2022.3",
   "dependencies": {
     "com.unity.transport": "2.2.1"
   },
