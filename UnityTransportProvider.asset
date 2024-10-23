@@ -12,3 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a72da6955e45e3745bf353b78e5f5483, type: 3}
   m_Name: UnityTransportProvider
   m_EditorClassIdentifier: 
+  _clientProtocol: 0
+  _serverProtocol: 0
+  _parameters:
+    connectTimeoutMS: 1000
+    maxConnectAttempts: 60
+    disconnectTimeoutMS: 30000
+    heartbeatTimeoutMS: 500
+    reconnectionTimeoutMS: 2000
+    maxFrameTimeMS: 0
+    fixedFrameTimeMS: 0
+    receiveQueueCapacity: 512
+    sendQueueCapacity: 512
+    maxMessageSize: 1400
+  _useEncryption: 0
+  _serverCertificate: 
+  _serverPrivateKey: 
+  _serverCommonName: 
+  _clientCaCertificate: 
