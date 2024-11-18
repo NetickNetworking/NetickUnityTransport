@@ -211,8 +211,10 @@ namespace StinkySteak.NShooter.Netick.Transport
         private BitBuffer _bitBuffer;
         private byte* _bytesBuffer;
         private int _bytesBufferSize = 2048;
-        private byte[] _connectionRequestBytes = new byte[200];
-        private NativeArray<byte> _connectionRequestNative = new NativeArray<byte>(200, Allocator.Persistent);
+
+        private const int MAX_CONNECTION_REQUEST_SIZE = 200;
+        private byte[] _connectionRequestBytes = new byte[MAX_CONNECTION_REQUEST_SIZE];
+        private NativeArray<byte> _connectionRequestNative;
 
         private const string CONNECTION_TYPE_UDP = "udp";
         private const string CONNECTION_TYPE_DTLS = "dtls";
@@ -577,7 +579,10 @@ namespace StinkySteak.NShooter.Netick.Transport
             var endpoint = NetworkEndpoint.Parse(address, (ushort)port);
             if (connectionData != null)
             {
-                _connectionRequestNative.CopyFrom(connectionData);
+                if (_connectionRequestNative.IsCreated)
+                    _connectionRequestNative.Dispose();
+
+                _connectionRequestNative = new NativeArray<byte>(connectionData, Allocator.Persistent);
                 _serverConnection = _driver.Connect(clientDriverId, endpoint, _connectionRequestNative);
             }
             else
@@ -622,9 +627,11 @@ namespace StinkySteak.NShooter.Netick.Transport
                     }
 
                     if (payload.IsCreated)
-                        payload.CopyTo(_connectionRequestBytes);
-                    bool accepted = NetworkPeer.OnConnectRequest(_connectionRequestBytes, payload.Length, _driver.GetRemoteEndpoint(c).ToNetickEndPoint());
+                    {
+                        CopyTo(payload, _connectionRequestBytes);
+                    }
 
+                    bool accepted = NetworkPeer.OnConnectRequest(_connectionRequestBytes, payload.Length, _driver.GetRemoteEndpoint(c).ToNetickEndPoint());
                     if (!accepted)
                     {
                         _driver.Disconnect(c);
@@ -645,6 +652,16 @@ namespace StinkySteak.NShooter.Netick.Transport
             }
             else
                 HandleConnectionEvents(_serverConnection, 0);
+        }
+
+        private void CopyTo(in NativeArray<byte> reference, byte[] target)
+        {
+            Array.Clear(target, 0, target.Length);
+
+            for (int i = 0; i < reference.Length; i++)
+            {
+                target[i] = reference[i];
+            }
         }
 
 

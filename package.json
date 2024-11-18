@@ -5,7 +5,7 @@
   "description": "A transport wrapper for UnityTransport.",
   "unity": "2022.3",
   "dependencies": {
-    "com.unity.transport": "2.2.1"
+    "com.unity.transport": "2.4.0"
   },
   "keywords": [
     "networking",
