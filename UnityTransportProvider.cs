@@ -59,6 +59,9 @@ namespace StinkySteak.NShooter.Netick.Transport
         [SerializeField][TextArea(3, 10)] private string _serverCommonName;
         [SerializeField][TextArea(3, 10)] private string _clientCaCertificate;
 
+        public ClientNetworkProtocol ClientProtocol => _clientProtocol;
+        public ServerNetworkProtocol ServerProtocol => _serverProtocol;
+
         private void Reset()
         {
             NetworkSettings settings = new NetworkSettings();
