@@ -81,6 +81,16 @@ namespace StinkySteak.NShooter.Netick.Transport
             _useEncryption = useEncryption;
         }
 
+        public void SetServerCertificate(string serverCertificate)
+        {
+            _serverCertificate = serverCertificate;
+        }
+
+        public void SetServerPrivateKey(string serverPrivateKey)
+        {
+            _serverPrivateKey = serverPrivateKey;
+        }
+
         public void SetServerSecrets(string serverCertificate, string serverPrivateKey)
         {
             _serverCertificate = serverCertificate;
