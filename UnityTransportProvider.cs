@@ -327,8 +327,12 @@ namespace StinkySteak.NShooter.Netick.Transport
             bool isSecure = UseEncryption;
 
             string connectionType = GetRelayConnectionType(RelaySocket.UDP, isSecure);
-
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return ConstructDriverRelay(new IPCNetworkInterface(), connectionType);
+            Debug.LogError($"[{nameof(UnityTransportProvider)}]: Relay UDP Driver is not available in webGL!");
+#else
             return ConstructDriverRelay(new UDPNetworkInterface(), connectionType);
+#endif
         }
 
         private NetworkDriver ConstructDriverRelayWS()
