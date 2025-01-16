@@ -10,6 +10,7 @@ using static StinkySteak.NShooter.Netick.Transport.NetickUnityTransport;
 using Unity.Networking.Transport.TLS;
 using Unity.Networking.Transport.Relay;
 using Unity.Jobs;
+using Unity.Networking.Transport.Error;
 
 #if RELAY_SDK_INSTALLED
 using Unity.Services.Relay.Models;
@@ -209,9 +210,21 @@ namespace StinkySteak.NShooter.Netick.Transport
             {
                 if (!Connection.IsCreated)
                     return;
-                Transport._driver.BeginSend(NetworkPipeline.Null, Connection, out var networkWriter);
+
+                int beginSendResult = Transport._driver.BeginSend(NetworkPipeline.Null, Connection, out var networkWriter);
+
+                if (beginSendResult < 0)
+                {
+                    Debug.LogError($"[{nameof(UnityTransportProvider)}]: Error begin send: {(StatusCode)beginSendResult}");
+                }
+
                 networkWriter.WriteBytesUnsafe((byte*)ptr.ToPointer(), length);
-                Transport._driver.EndSend(networkWriter);
+                int endSendResult = Transport._driver.EndSend(networkWriter);
+
+                if (endSendResult < 0)
+                {
+                    Debug.LogError($"[{nameof(UnityTransportProvider)}]: Error begin send: {(StatusCode)beginSendResult}");
+                }
             }
         }
 
