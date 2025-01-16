@@ -61,6 +61,7 @@ namespace StinkySteak.NShooter.Netick.Transport
 
         public ClientNetworkProtocol ClientProtocol => _clientProtocol;
         public ServerNetworkProtocol ServerProtocol => _serverProtocol;
+        public string ServerCommonName => _serverCommonName;
 
         private void Reset()
         {
