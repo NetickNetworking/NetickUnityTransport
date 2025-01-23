@@ -713,10 +713,9 @@ namespace StinkySteak.NShooter.Netick.Transport
 
         private void HandleConnectionEvents(Unity.Networking.Transport.NetworkConnection conn, int index)
         {
-            DataStreamReader stream;
             NetworkEvent.Type cmd;
 
-            while ((cmd = _driver.PopEventForConnection(conn, out stream)) != NetworkEvent.Type.Empty)
+            while ((cmd = _driver.PopEventForConnection(conn, out DataStreamReader stream)) != NetworkEvent.Type.Empty)
             {
                 // game data
                 if (cmd == NetworkEvent.Type.Data)
