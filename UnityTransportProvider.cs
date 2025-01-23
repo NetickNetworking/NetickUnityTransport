@@ -621,7 +621,25 @@ namespace StinkySteak.NShooter.Netick.Transport
         {
             var conn = (NetickUnityTransport.NetickUnityTransportConnection)connection;
             if (conn.Connection.IsCreated)
+            {
                 _driver.Disconnect(conn.Connection);
+                
+                TransportDisconnectReason reason = TransportDisconnectReason.Shutdown;
+
+                NetworkPeer.OnDisconnected(conn, reason);
+                _freeConnections.Enqueue(conn);
+                _connectedPeers.Remove(conn.Connection);
+
+                // clean up connections.
+                for (int i = 0; i < _connections.Length; i++)
+                {
+                    if (_connections[i] == conn.Connection)
+                    {
+                        _connections.RemoveAtSwapBack(i);
+                        i--;
+                    }
+                }
+            }
         }
 
         public override void PollEvents()
