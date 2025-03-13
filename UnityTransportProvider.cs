@@ -10,6 +10,7 @@ using static StinkySteak.NShooter.Netick.Transport.NetickUnityTransport;
 using Unity.Networking.Transport.TLS;
 using Unity.Networking.Transport.Relay;
 using Unity.Jobs;
+using Unity.Networking.Transport.Error;
 
 #if RELAY_SDK_INSTALLED
 using Unity.Services.Relay.Models;
@@ -59,6 +60,11 @@ namespace StinkySteak.NShooter.Netick.Transport
         [SerializeField][TextArea(3, 10)] private string _serverCommonName;
         [SerializeField][TextArea(3, 10)] private string _clientCaCertificate;
 
+        public ClientNetworkProtocol ClientProtocol => _clientProtocol;
+        public ServerNetworkProtocol ServerProtocol => _serverProtocol;
+        public string ServerCommonName => _serverCommonName;
+        public ref NetworkConfigParameter Parameters => ref _parameters;
+
         private void Reset()
         {
             NetworkSettings settings = new NetworkSettings();
@@ -71,6 +77,21 @@ namespace StinkySteak.NShooter.Netick.Transport
         {
             _clientProtocol = clientProtocol;
             _serverProtocol = serverProtocol;
+        }
+
+        public void SetEncryption(bool useEncryption)
+        {
+            _useEncryption = useEncryption;
+        }
+
+        public void SetServerCertificate(string serverCertificate)
+        {
+            _serverCertificate = serverCertificate;
+        }
+
+        public void SetServerPrivateKey(string serverPrivateKey)
+        {
+            _serverPrivateKey = serverPrivateKey;
         }
 
         public void SetServerSecrets(string serverCertificate, string serverPrivateKey)
@@ -190,9 +211,21 @@ namespace StinkySteak.NShooter.Netick.Transport
             {
                 if (!Connection.IsCreated)
                     return;
-                Transport._driver.BeginSend(NetworkPipeline.Null, Connection, out var networkWriter);
+
+                int beginSendResult = Transport._driver.BeginSend(NetworkPipeline.Null, Connection, out var networkWriter);
+
+                if (beginSendResult < 0)
+                {
+                    Debug.LogError($"[{nameof(UnityTransportProvider)}]: Error begin send: {(StatusCode)beginSendResult}");
+                }
+
                 networkWriter.WriteBytesUnsafe((byte*)ptr.ToPointer(), length);
-                Transport._driver.EndSend(networkWriter);
+                int endSendResult = Transport._driver.EndSend(networkWriter);
+
+                if (endSendResult < 0)
+                {
+                    Debug.LogError($"[{nameof(UnityTransportProvider)}]: Error begin send: {(StatusCode)beginSendResult}");
+                }
             }
         }
 
@@ -206,8 +239,10 @@ namespace StinkySteak.NShooter.Netick.Transport
         private BitBuffer _bitBuffer;
         private byte* _bytesBuffer;
         private int _bytesBufferSize = 2048;
-        private byte[] _connectionRequestBytes = new byte[200];
-        private NativeArray<byte> _connectionRequestNative = new NativeArray<byte>(200, Allocator.Persistent);
+
+        private const int MAX_CONNECTION_REQUEST_SIZE = 200;
+        private byte[] _connectionRequestBytes = new byte[MAX_CONNECTION_REQUEST_SIZE];
+        private NativeArray<byte> _connectionRequestNative;
 
         private const string CONNECTION_TYPE_UDP = "udp";
         private const string CONNECTION_TYPE_DTLS = "dtls";
@@ -572,7 +607,10 @@ namespace StinkySteak.NShooter.Netick.Transport
             var endpoint = NetworkEndpoint.Parse(address, (ushort)port);
             if (connectionData != null)
             {
-                _connectionRequestNative.CopyFrom(connectionData);
+                if (_connectionRequestNative.IsCreated)
+                    _connectionRequestNative.Dispose();
+
+                _connectionRequestNative = new NativeArray<byte>(connectionData, Allocator.Persistent);
                 _serverConnection = _driver.Connect(clientDriverId, endpoint, _connectionRequestNative);
             }
             else
@@ -583,7 +621,25 @@ namespace StinkySteak.NShooter.Netick.Transport
         {
             var conn = (NetickUnityTransport.NetickUnityTransportConnection)connection;
             if (conn.Connection.IsCreated)
+            {
                 _driver.Disconnect(conn.Connection);
+                
+                TransportDisconnectReason reason = TransportDisconnectReason.Shutdown;
+
+                NetworkPeer.OnDisconnected(conn, reason);
+                _freeConnections.Enqueue(conn);
+                _connectedPeers.Remove(conn.Connection);
+
+                // clean up connections.
+                for (int i = 0; i < _connections.Length; i++)
+                {
+                    if (_connections[i] == conn.Connection)
+                    {
+                        _connections.RemoveAtSwapBack(i);
+                        i--;
+                    }
+                }
+            }
         }
 
         public override void PollEvents()
@@ -617,9 +673,11 @@ namespace StinkySteak.NShooter.Netick.Transport
                     }
 
                     if (payload.IsCreated)
-                        payload.CopyTo(_connectionRequestBytes);
-                    bool accepted = NetworkPeer.OnConnectRequest(_connectionRequestBytes, payload.Length, _driver.GetRemoteEndpoint(c).ToNetickEndPoint());
+                    {
+                        CopyTo(payload, _connectionRequestBytes);
+                    }
 
+                    bool accepted = NetworkPeer.OnConnectRequest(_connectionRequestBytes, payload.Length, _driver.GetRemoteEndpoint(c).ToNetickEndPoint());
                     if (!accepted)
                     {
                         _driver.Disconnect(c);
@@ -642,13 +700,22 @@ namespace StinkySteak.NShooter.Netick.Transport
                 HandleConnectionEvents(_serverConnection, 0);
         }
 
+        private void CopyTo(in NativeArray<byte> reference, byte[] target)
+        {
+            Array.Clear(target, 0, target.Length);
+
+            for (int i = 0; i < reference.Length; i++)
+            {
+                target[i] = reference[i];
+            }
+        }
+
 
         private void HandleConnectionEvents(Unity.Networking.Transport.NetworkConnection conn, int index)
         {
-            DataStreamReader stream;
             NetworkEvent.Type cmd;
 
-            while ((cmd = _driver.PopEventForConnection(conn, out stream)) != NetworkEvent.Type.Empty)
+            while ((cmd = _driver.PopEventForConnection(conn, out DataStreamReader stream)) != NetworkEvent.Type.Empty)
             {
                 // game data
                 if (cmd == NetworkEvent.Type.Data)

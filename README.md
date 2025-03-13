@@ -52,3 +52,15 @@ Example:
 
 #### Client Guide
 - Client needs to call `JoinAllocationAsync` and supply it to the public variable.
+
+## Weakness
+
+`NetworkConnectionRequest` Data (`byte[]`) is fixed size (of 200).  
+This decision is made to avoid GC at runtime. You may need to use `request.DataLength` or resize the Array by your own to use it accurately.
+
+```cs
+public override void OnConnectRequest(NetworkSandbox sandbox, NetworkConnectionRequest request)
+{
+	
+}
+```
