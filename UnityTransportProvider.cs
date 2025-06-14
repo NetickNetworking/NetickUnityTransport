@@ -1,22 +1,20 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Networking.Transport;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Collections;
-using Netick;
-using Netick.Unity;
-using static StinkySteak.NShooter.Netick.Transport.NetickUnityTransport;
+using Networking = Unity.Networking;
 using Unity.Networking.Transport.TLS;
 using Unity.Networking.Transport.Relay;
 using Unity.Jobs;
 using Unity.Networking.Transport.Error;
 
-#if RELAY_SDK_INSTALLED
+#if MULTIPLAYER_SERVICES_SDK_INSTALLED
 using Unity.Services.Relay.Models;
 #endif
 
-namespace StinkySteak.NShooter.Netick.Transport
+namespace Netick.Transport
 {
     public enum ClientNetworkProtocol
     {
@@ -43,7 +41,7 @@ namespace StinkySteak.NShooter.Netick.Transport
     }
 
     [CreateAssetMenu(fileName = "UnityTransportProvider", menuName = "Netick/Transport/UnityTransportProvider", order = 1)]
-    public class UnityTransportProvider : NetworkTransportProvider
+    public class UnityTransportProvider : Unity.NetworkTransportProvider
     {
         [SerializeField] private ClientNetworkProtocol _clientProtocol;
         [SerializeField] private ServerNetworkProtocol _serverProtocol;
@@ -130,7 +128,7 @@ namespace StinkySteak.NShooter.Netick.Transport
 #endif
         }
     }
-    public static class NetickUnityTransportExt { public static NetickUnityTransportEndPoint ToNetickEndPoint(this NetworkEndpoint networkEndpoint) => new NetickUnityTransportEndPoint(networkEndpoint); }
+    public static class NetickUnityTransportExt { public static NetickUnityTransport.NetickUnityTransportEndPoint ToNetickEndPoint(this NetworkEndpoint networkEndpoint) => new NetickUnityTransport.NetickUnityTransportEndPoint(networkEndpoint); }
 
     public unsafe class NetickUnityTransport : NetworkTransport
     {
@@ -196,7 +194,7 @@ namespace StinkySteak.NShooter.Netick.Transport
         {
 
             public NetickUnityTransport Transport;
-            public Unity.Networking.Transport.NetworkConnection Connection;
+            public Networking.Transport.NetworkConnection Connection;
             public override IEndPoint EndPoint => Transport._driver.GetRemoteEndpoint(Connection).ToNetickEndPoint();
             public override int Mtu => MaxPayloadSize;
 
@@ -230,11 +228,11 @@ namespace StinkySteak.NShooter.Netick.Transport
         }
 
         private MultiNetworkDriver _driver;
-        private Dictionary<Unity.Networking.Transport.NetworkConnection, NetickUnityTransportConnection> _connectedPeers = new();
+        private Dictionary<Networking.Transport.NetworkConnection, NetickUnityTransportConnection> _connectedPeers = new();
         private Queue<NetickUnityTransportConnection> _freeConnections = new();
-        private Unity.Networking.Transport.NetworkConnection _serverConnection;
+        private Networking.Transport.NetworkConnection _serverConnection;
 
-        private NativeList<Unity.Networking.Transport.NetworkConnection> _connections;
+        private NativeList<Networking.Transport.NetworkConnection> _connections;
 
         private BitBuffer _bitBuffer;
         private byte* _bytesBuffer;
@@ -250,9 +248,22 @@ namespace StinkySteak.NShooter.Netick.Transport
         private const string CONNECTION_TYPE_WS = "ws";
         private const string CONNECTION_TYPE_WSS = "wss";
 
-#if RELAY_SDK_INSTALLED
-        public static Allocation Allocation;
-        public static JoinAllocation JoinAllocation;
+#if MULTIPLAYER_SERVICES_SDK_INSTALLED
+        public static Allocation Allocation => _allocation;
+        public static JoinAllocation JoinAllocation => _joinAllocation;
+
+        private static Allocation _allocation;
+        private static JoinAllocation _joinAllocation;
+
+        public static void SetAllocation(Allocation allocation)
+        {
+            _allocation = allocation;
+        }
+
+        public static void SetJoinAllocation(JoinAllocation joinAllocation)
+        {
+            _joinAllocation = joinAllocation;
+        }
 #endif
 
         private enum RelaySocket
@@ -263,24 +274,24 @@ namespace StinkySteak.NShooter.Netick.Transport
 
         public NetickUnityTransport()
         {
-            _bytesBuffer = (byte*)UnsafeUtility.Malloc(_bytesBufferSize, 4, Unity.Collections.Allocator.Persistent);
+            _bytesBuffer = (byte*)UnsafeUtility.Malloc(_bytesBufferSize, 4, Allocator.Persistent);
         }
 
         ~NetickUnityTransport()
         {
-            UnsafeUtility.Free(_bytesBuffer, Unity.Collections.Allocator.Persistent);
+            UnsafeUtility.Free(_bytesBuffer, Allocator.Persistent);
             _connectionRequestNative.Dispose();
         }
 
         public override void Init()
         {
             _bitBuffer = new BitBuffer(createChunks: false);
-            _connections = new NativeList<Unity.Networking.Transport.NetworkConnection>(Engine.IsServer ? Engine.Config.MaxPlayers : 0, Unity.Collections.Allocator.Persistent);
+            _connections = new NativeList<Networking.Transport.NetworkConnection>(Engine.IsServer ? Engine.Config.MaxPlayers : 0, Allocator.Persistent);
         }
 
-        private NetworkDriver ConstructDriverRelay(string connectionType)
+        private NetworkDriver ConstructDriverRelay<N>(N networkInterface, string connectionType) where N : unmanaged, INetworkInterface
         {
-#if RELAY_SDK_INSTALLED
+#if MULTIPLAYER_SERVICES_SDK_INSTALLED
             RelayServerData relayData;
             if (Engine.IsServer)
             {
@@ -289,7 +300,7 @@ namespace StinkySteak.NShooter.Netick.Transport
                     throw new Exception("Relay Allocation Request is null");
                 }
 
-                relayData = new RelayServerData(Allocation, connectionType);
+                relayData = Allocation.ToRelayServerData(connectionType);
             }
             else
             {
@@ -298,15 +309,15 @@ namespace StinkySteak.NShooter.Netick.Transport
                     throw new Exception("Relay Join Allocation is null");
                 }
 
-                relayData = new RelayServerData(JoinAllocation, connectionType);
+                relayData = JoinAllocation.ToRelayServerData(connectionType);
             }
             NetworkSettings settings = GetDefaultNetworkSettings();
             settings.WithRelayParameters(ref relayData);
 
-            NetworkDriver driver = NetworkDriver.Create(settings);
+            NetworkDriver driver = NetworkDriver.Create(networkInterface, settings);
             return driver;
 #else
-            throw new Exception("Unity Relay SDK is missing. If it's already installed, ensure 'RELAY_SDK_INSTALLED' is added to the scripting define symbols");
+            throw new Exception("Unity Relay SDK is missing. If it's already installed, ensure 'MULTIPLAYER_SERVICES_SDK_INSTALLED' is added to the scripting define symbols");
 #endif
         }
 
@@ -342,8 +353,12 @@ namespace StinkySteak.NShooter.Netick.Transport
             bool isSecure = UseEncryption;
 
             string connectionType = GetRelayConnectionType(RelaySocket.UDP, isSecure);
-
-            return ConstructDriverRelay(connectionType);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return ConstructDriverRelay(new IPCNetworkInterface(), connectionType);
+            Debug.LogError($"[{nameof(UnityTransportProvider)}]: Relay UDP Driver is not available in webGL!");
+#else
+            return ConstructDriverRelay(new UDPNetworkInterface(), connectionType);
+#endif
         }
 
         private NetworkDriver ConstructDriverRelayWS()
@@ -352,7 +367,7 @@ namespace StinkySteak.NShooter.Netick.Transport
 
             string connectionType = GetRelayConnectionType(RelaySocket.WebSocket, isSecure);
 
-            return ConstructDriverRelay(connectionType);
+            return ConstructDriverRelay(new WebSocketNetworkInterface(), connectionType);
         }
 
         private NetworkSettings GetNetworkSettings(bool isServer)
@@ -623,7 +638,7 @@ namespace StinkySteak.NShooter.Netick.Transport
             if (conn.Connection.IsCreated)
             {
                 _driver.Disconnect(conn.Connection);
-                
+
                 TransportDisconnectReason reason = TransportDisconnectReason.Shutdown;
 
                 NetworkPeer.OnDisconnected(conn, reason);
@@ -663,7 +678,7 @@ namespace StinkySteak.NShooter.Netick.Transport
                 }
 
                 // accept new connections in the server.
-                Unity.Networking.Transport.NetworkConnection c;
+                Networking.Transport.NetworkConnection c;
                 while ((c = _driver.Accept(out var payload)) != default)
                 {
                     if (_connectedPeers.Count >= Engine.Config.MaxPlayers)
@@ -711,7 +726,7 @@ namespace StinkySteak.NShooter.Netick.Transport
         }
 
 
-        private void HandleConnectionEvents(Unity.Networking.Transport.NetworkConnection conn, int index)
+        private void HandleConnectionEvents(Networking.Transport.NetworkConnection conn, int index)
         {
             NetworkEvent.Type cmd;
 
