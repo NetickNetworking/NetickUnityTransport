@@ -289,7 +289,7 @@ namespace Netick.Transport
             _connections = new NativeList<Networking.Transport.NetworkConnection>(Engine.IsServer ? Engine.Config.MaxPlayers : 0, Allocator.Persistent);
         }
 
-        private NetworkDriver ConstructDriverRelay(string connectionType)
+        private NetworkDriver ConstructDriverRelay<N>(N networkInterface, string connectionType) where N : unmanaged, INetworkInterface
         {
 #if MULTIPLAYER_SERVICES_SDK_INSTALLED
             RelayServerData relayData;
@@ -314,7 +314,7 @@ namespace Netick.Transport
             NetworkSettings settings = GetDefaultNetworkSettings();
             settings.WithRelayParameters(ref relayData);
 
-            NetworkDriver driver = NetworkDriver.Create(settings);
+            NetworkDriver driver = NetworkDriver.Create(networkInterface, settings);
             return driver;
 #else
             throw new Exception("Unity Relay SDK is missing. If it's already installed, ensure 'MULTIPLAYER_SERVICES_SDK_INSTALLED' is added to the scripting define symbols");
@@ -353,8 +353,12 @@ namespace Netick.Transport
             bool isSecure = UseEncryption;
 
             string connectionType = GetRelayConnectionType(RelaySocket.UDP, isSecure);
-
-            return ConstructDriverRelay(connectionType);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return ConstructDriverRelay(new IPCNetworkInterface(), connectionType);
+            Debug.LogError($"[{nameof(UnityTransportProvider)}]: Relay UDP Driver is not available in webGL!");
+#else
+            return ConstructDriverRelay(new UDPNetworkInterface(), connectionType);
+#endif
         }
 
         private NetworkDriver ConstructDriverRelayWS()
@@ -363,7 +367,7 @@ namespace Netick.Transport
 
             string connectionType = GetRelayConnectionType(RelaySocket.WebSocket, isSecure);
 
-            return ConstructDriverRelay(connectionType);
+            return ConstructDriverRelay(new WebSocketNetworkInterface(), connectionType);
         }
 
         private NetworkSettings GetNetworkSettings(bool isServer)
