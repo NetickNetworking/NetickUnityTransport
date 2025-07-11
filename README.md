@@ -44,8 +44,8 @@ Example:
 - Websocket Secure (TLS)
 - Secure UDP (DTLS)
 
-### Connection Request Weakness
-
+### Limitations
+#### Connection Request
 `NetworkConnectionRequest` Data (`byte[]`) is fixed size (of 200).  
 This decision is made to avoid GC at runtime. You may need to use `request.DataLength` or resize the Array by your own to use it accurately.
 
