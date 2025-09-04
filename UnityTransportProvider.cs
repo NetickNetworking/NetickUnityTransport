@@ -580,8 +580,6 @@ namespace Netick.Transport
 
             MultiNetworkDriver multiDriver = MultiNetworkDriver.Create();
 
-            NetworkDriver.Create();
-
             if (ClientProtocol == ClientNetworkProtocol.UDP)
                 multiDriver.AddDriver(driverUdp);
             if (ClientProtocol == ClientNetworkProtocol.WebSocket)
