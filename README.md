@@ -14,8 +14,7 @@ A Netick integration for Unity Transport and Unity Relay, featuring multi-protoc
 This package requires Netick 2 and can be installed via Unity Package Manager using Git URLs.
 
 **Dependencies:**
-- **Unity Editor**: Version 2022 or later
-- **[Netick for Unity](https://github.com/NetickNetworking/NetickForUnity)**: Install before adding this package
+- **[Netick for Unity](https://github.com/NetickNetworking/NetickForUnity)**
 
 ### Installing from Git
 
