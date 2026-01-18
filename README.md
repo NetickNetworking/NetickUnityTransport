@@ -8,7 +8,6 @@ A Netick integration for Unity Transport and Unity Relay, featuring multi-protoc
 - **Cross-Platform Connectivity**: Simultaneous protocol hosting for WebGL and native clients
 - **Unity Relay Integration**: Built-in support for Unity's Relay service for NAT traversal
 - **Secure Connections**: Optional TLS (WebSocket) and DTLS (UDP) encryption
-- **Flexible Port Management**: Automatic port allocation for multiple protocols
 
 ## Installation
 
